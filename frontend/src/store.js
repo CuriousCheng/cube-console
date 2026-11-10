@@ -24,3 +24,19 @@ export async function loadMe() {
   me.value = await api('/api/me')
   health.value = await api('/api/health')
 }
+
+// 开发期自动用 admin 登录，省得每次输密码；生产构建不会执行
+export async function devAutoLogin() {
+  if (token.value) return
+  const r = await api('/api/login', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: import.meta.env.VITE_DEV_USER || 'admin',
+      password: import.meta.env.VITE_DEV_PASS || 'admin123',
+    }),
+  })
+  token.value = r.token
+  localStorage.setItem('wc_token', r.token)
+  me.value = r.user
+  await loadMe()
+}

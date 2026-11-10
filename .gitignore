@@ -4,23 +4,20 @@ __pycache__/
 .venv/
 venv/
 
-# 运行时（体积大，用 scripts/fetch_trino.sh 下载）
-runtime/
-
-# 构建产物
-web/
-frontend/dist/
-frontend/node_modules/
-
-# 软件状态（含密钥，不入库）
+# 运行时数据（不入库）
+cube-conf/
 data/
-.env
-.wren-config.json
+logs/
 *.log
 
-# 业务（用户的真实业务不入库，用示例脚本生成）
-businesses/*
-!businesses/.gitkeep
+# 前端
+node_modules/
+frontend/dist/
+web/
+
+# 密钥
+.env
+.env.bak
 
 # OS
 .DS_Store

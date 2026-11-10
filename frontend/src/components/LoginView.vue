@@ -29,7 +29,7 @@ async function submit() {
 <template>
   <div class="login-wrap">
     <div class="card login-card">
-      <h1>Wren Console</h1>
+      <h1>Cube Console</h1>
       <p class="muted">把散落的数据库，变成 AI 能直接问的语义项目</p>
 
       <label class="lbl">账号</label>

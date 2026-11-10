@@ -137,22 +137,10 @@ onMounted(load)
   </div>
 
   <div class="card">
-    <h3>运行参数</h3>
-    <p class="muted">控制 MCP 池和并发，影响内存和 AI 限流。</p>
+    <h3>查询参数</h3>
+    <p class="muted">控制一次查询最多返回多少行、viewer 能不能看到生成的 SQL。</p>
 
     <div class="grid2">
-      <div>
-        <label class="lbl">MCP 池容量（同时运行的项目数）</label>
-        <input v-model.number="sys.pool_size" type="number" min="1" max="20" />
-      </div>
-      <div>
-        <label class="lbl">单项目并发提问数</label>
-        <input v-model.number="sys.ask_concurrency" type="number" min="1" max="10" />
-      </div>
-      <div>
-        <label class="lbl">空闲多久停 MCP（分钟）</label>
-        <input v-model.number="sys.idle_stop_minutes" type="number" min="1" max="240" />
-      </div>
       <div>
         <label class="lbl">viewer 能否看 SQL</label>
         <label class="switch">

@@ -1,36 +1,58 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { token, me, health, loadMe, logout } from './store'
+import { api, token, me, health, loadMe, logout, devAutoLogin } from './store'
 import LoginView from './components/LoginView.vue'
-import AskView from './components/AskView.vue'
-import ProjectsView from './components/ProjectsView.vue'
-import SourcesView from './components/SourcesView.vue'
 import SettingsView from './components/SettingsView.vue'
 import UsersView from './components/UsersView.vue'
 import CubeBusinessView from './components/CubeBusinessView.vue'
+import CubeQueryView from './components/CubeQueryView.vue'
+import CubeFieldEditor from './components/CubeFieldEditor.vue'
+import CubeJoinView from './components/CubeJoinView.vue'
+import SourcesView from './components/SourcesView.vue'
+import KnowledgeView from './components/KnowledgeView.vue'
 
-const view = ref('ask') // ask | settings
-const tab = ref('projects')
+const tab = ref('cubequery')
+const compiling = ref(false)
+const compileMsg = ref('')
+
+async function compile() {
+  compiling.value = true
+  compileMsg.value = ''
+  try {
+    const r = await api('/api/cube/compile', { method: 'POST' })
+    if (!r.ok) {
+      compileMsg.value = '编译失败'
+    } else {
+      const b = r.rebuild || {}
+      compileMsg.value =
+        '已编译 ' + (b.cubes || 0) + ' 个表' +
+        (b.added ? '，新增 ' + b.added : '') +
+        (b.removed ? '，移除 ' + b.removed : '') +
+        (r.ready ? '，Cube 就绪' : '，Cube 未就绪')
+    }
+  } catch (e) {
+    compileMsg.value = e.message
+  } finally {
+    compiling.value = false
+  }
+}
 
 const isAdmin = computed(() => me.value?.role === 'admin')
 const isEditor = computed(() => me.value?.role === 'editor')
-const canSettings = computed(() => !!me.value) // 三种角色都能进；里面能看什么由 tabs 决定
 
 const tabs = computed(() => {
-  const list = [{ key: 'projects', label: '业务' }]
-  if (isAdmin.value || isEditor.value) list.push({ key: 'cube', label: 'Cube 业务' })
-  if (isAdmin.value || isEditor.value) list.push({ key: 'sources', label: '数据源' })
+  const list = [
+    { key: 'cubequery', label: '查询' },
+    { key: 'cube', label: '业务' },
+    { key: 'fields', label: '字段定义' },
+    { key: 'joins', label: '表关系' },
+    { key: 'knowledge', label: '知识记忆' },
+    { key: 'sources', label: '数据源' },
+  ]
   if (isAdmin.value) list.push({ key: 'settings', label: '系统设置' })
   if (isAdmin.value) list.push({ key: 'users', label: '用户' })
   return list
 })
-
-function openSettings() {
-  view.value = 'settings'
-  if (!tabs.value.some((t) => t.key === tab.value)) {
-    tab.value = tabs.value[0]?.key || 'projects'
-  }
-}
 
 async function refresh() {
   try {
@@ -40,7 +62,12 @@ async function refresh() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  if (!token.value && import.meta.env.DEV) {
+    try {
+      await devAutoLogin()
+    } catch {}
+  }
   if (token.value) refresh()
 })
 </script>
@@ -50,7 +77,7 @@ onMounted(() => {
 
   <div v-else class="wrap">
     <header>
-      <strong>Wren Console</strong>
+      <strong>Cube Console</strong>
       <span class="muted">{{ me?.name }}（{{ me?.role }}）</span>
       <span class="spacer"></span>
       <span v-if="health" class="muted">
@@ -59,34 +86,33 @@ onMounted(() => {
           {{ health.trino?.ok ? '已连接 ' + health.trino.version : '未连接' }}
         </span>
       </span>
-      <button v-if="view === 'settings'" @click="view = 'ask'">← 返回查询</button>
-      <button v-else-if="canSettings" @click="openSettings">设置</button>
+      <button :disabled="compiling" @click="compile">
+        {{ compiling ? '编译中…' : '编译' }}
+      </button>
+      <span v-if="compileMsg" class="muted small">{{ compileMsg }}</span>
       <button @click="refresh">刷新</button>
       <button @click="logout">退出</button>
     </header>
 
-    <template v-if="view === 'ask'">
-      <AskView />
-    </template>
+    <nav class="tabs">
+      <button
+        v-for="t in tabs"
+        :key="t.key"
+        :class="['tab', tab === t.key ? 'on' : '']"
+        @click="tab = t.key"
+      >
+        {{ t.label }}
+      </button>
+    </nav>
 
-    <template v-else>
-      <nav class="tabs">
-        <button
-          v-for="t in tabs"
-          :key="t.key"
-          :class="['tab', tab === t.key ? 'on' : '']"
-          @click="tab = t.key"
-        >
-          {{ t.label }}
-        </button>
-      </nav>
-
-      <ProjectsView v-if="tab === 'projects'" />
-      <CubeBusinessView v-else-if="tab === 'cube'" />
-      <SourcesView v-else-if="tab === 'sources'" />
-      <SettingsView v-else-if="tab === 'settings' && isAdmin" />
-      <UsersView v-else-if="tab === 'users' && isAdmin" />
-    </template>
+    <CubeQueryView v-if="tab === 'cubequery'" />
+    <CubeBusinessView v-else-if="tab === 'cube'" />
+    <CubeFieldEditor v-else-if="tab === 'fields'" />
+    <CubeJoinView v-else-if="tab === 'joins'" />
+    <KnowledgeView v-else-if="tab === 'knowledge'" />
+    <SourcesView v-else-if="tab === 'sources'" />
+    <SettingsView v-else-if="tab === 'settings' && isAdmin" />
+    <UsersView v-else-if="tab === 'users' && isAdmin" />
   </div>
 </template>
 

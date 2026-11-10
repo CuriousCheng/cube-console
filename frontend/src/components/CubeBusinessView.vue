@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { api, me } from '../store'
+import YamlBox from './YamlBox.vue'
 
 const cubes = ref([])
 const views = ref([])
@@ -11,6 +12,8 @@ const busy = ref(false)
 const msg = ref('')
 const err = ref('')
 const canEdit = computed(() => ['admin', 'editor'].includes(me.value?.role))
+
+const yamlName = ref('')
 
 const pickedCubes = computed(() => cubes.value.filter((c) => picked.value.includes(c.name)))
 const tableCubes = computed(() => cubes.value.filter((c) => c.type !== 'view'))
@@ -83,7 +86,7 @@ onMounted(load)
 
 <template>
   <div class="card">
-    <h3>用 Cube 建业务</h3>
+    <h3>业务</h3>
     <p class="muted">
       勾选要放进这个业务的表，Cube 会生成一个 <b>view</b>（一组字段的视图）。选表就是业务边界。
     </p>
@@ -91,7 +94,7 @@ onMounted(load)
     <p v-if="err" class="bad">{{ err }}</p>
     <p v-if="msg" class="ok">{{ msg }}</p>
 
-    <div class="grid">
+    <div class="grid2">
       <div>
         <label class="lbl">表（{{ tableCubes.length }}）</label>
         <div class="list">
@@ -105,7 +108,7 @@ onMounted(load)
             <span class="nm">{{ c.name }}</span>
             <span class="muted small">{{ c.title }}</span>
           </label>
-          <p v-if="!tableCubes.length" class="muted">没有表（Cube 里还没有 cube）</p>
+          <p v-if="!tableCubes.length" class="muted">没有表</p>
         </div>
       </div>
 
@@ -126,11 +129,11 @@ onMounted(load)
     <div class="form">
       <div>
         <label class="lbl">业务标识（英文，a-z 0-9 _）</label>
-        <input v-model="name" :disabled="!canEdit" placeholder="sales_analysis" @focus="autoName" />
+        <input v-model="name" :disabled="!canEdit" placeholder="auto_sales" @focus="autoName" />
       </div>
       <div>
         <label class="lbl">业务名称（中文，显示用）</label>
-        <input v-model="title" :disabled="!canEdit" placeholder="销售分析" />
+        <input v-model="title" :disabled="!canEdit" placeholder="汽车销售分析" />
       </div>
       <div class="act">
         <button
@@ -149,7 +152,7 @@ onMounted(load)
         <tr>
           <th>标识</th>
           <th>文件</th>
-          <th style="width: 80px"></th>
+          <th style="width: 160px"></th>
         </tr>
       </thead>
       <tbody>
@@ -157,17 +160,22 @@ onMounted(load)
           <td><code>{{ v.name }}</code></td>
           <td class="muted small">{{ v.file }}</td>
           <td>
+            <button @click="yamlName = yamlName === v.name ? '' : v.name">
+              {{ yamlName === v.name ? '收起' : 'YAML' }}
+            </button>
             <button v-if="canEdit" @click="remove(v)">删除</button>
           </td>
         </tr>
       </tbody>
     </table>
     <p v-else class="muted">还没有业务</p>
+
+    <YamlBox kind="view" :name="yamlName" />
   </div>
 </template>
 
 <style scoped>
-.grid {
+.grid2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;

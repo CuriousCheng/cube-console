@@ -322,7 +322,20 @@ async def create_datasource(body: DataSourceIn, user: dict = Depends(require("ad
     data["items"] = items
     await store.write("datasources", data)
 
-    return {"ok": True, "item": _public(item), "reload": reload_result}
+    # 数据源变了：自动重建 Cube 模型
+    try:
+        from .core import cube_models
+
+        rebuild = await cube_models.rebuild(
+            Path(os.getenv("CUBE_CONF", str(Path.home() / "cube" / "conf")))
+            / "model"
+            / "cubes"
+            / "all.yml"
+        )
+    except Exception as e:  # noqa: BLE001
+        rebuild = {"ok": False, "error": str(e)[:200]}
+
+    return {"ok": True, "item": _public(item), "reload": reload_result, "rebuild": rebuild}
 
 
 @app.put("/api/datasources/{ds_id}")
@@ -367,7 +380,22 @@ async def delete_datasource(ds_id: str, user: dict = Depends(require("admin"))) 
 
     data["items"] = [d for d in items if d["id"] != ds_id]
     await store.write("datasources", data)
-    return {"ok": True}
+
+    # 删完要重启 Trino 让 catalog 下线，然后重建模型（消失的表会被移除）
+    reload_result = await trino_admin.restart_trino()
+    try:
+        from .core import cube_models
+
+        rebuild = await cube_models.rebuild(
+            Path(os.getenv("CUBE_CONF", str(Path.home() / "cube" / "conf")))
+            / "model"
+            / "cubes"
+            / "all.yml"
+        )
+    except Exception as e:  # noqa: BLE001
+        rebuild = {"ok": False, "error": str(e)[:200]}
+
+    return {"ok": True, "reload": reload_result, "rebuild": rebuild}
 
 
 class TestIn(BaseModel):

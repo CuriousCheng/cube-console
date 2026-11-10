@@ -6,6 +6,8 @@ const sources = ref([])
 const testResult = ref(null)
 const testLoading = ref(false)
 const saving = ref(false)
+const rebuildLoading = ref(false)
+const rebuildMsg = ref('')
 const error = ref('')
 
 const form = reactive({
@@ -59,6 +61,21 @@ async function testForm() {
     testResult.value = { ok: false, error: e.message }
   } finally {
     testLoading.value = false
+  }
+}
+
+async function rebuild() {
+  rebuildLoading.value = true
+  rebuildMsg.value = ''
+  try {
+    const r = await api('/api/cube/rebuild', { method: 'POST' })
+    rebuildMsg.value = r.ok
+      ? `已重建 ${r.cubes} 个 cube（新增 ${r.added}，保留 ${r.kept}，移除 ${r.removed}）`
+      : `重建失败：${r.error}`
+  } catch (e) {
+    rebuildMsg.value = e.message
+  } finally {
+    rebuildLoading.value = false
   }
 }
 
@@ -131,6 +148,14 @@ onMounted(load)
       </tbody>
     </table>
     <p v-else class="muted">还没有数据源。</p>
+
+    <div class="actions">
+      <button :disabled="rebuildLoading" @click="rebuild">
+        {{ rebuildLoading ? '重建中…' : '重新生成模型' }}
+      </button>
+      <span v-if="rebuildMsg" class="muted">{{ rebuildMsg }}</span>
+      <span v-else class="muted">数据源增删后会自动重建，也可以手动点这里</span>
+    </div>
   </div>
 
   <div v-if="canEdit()" class="card">
