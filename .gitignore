@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 运行时（体积大，用 scripts/fetch_trino.sh 下载）
+runtime/
+
+# 构建产物
+web/
+frontend/dist/
+frontend/node_modules/
+
+# 软件状态（含密钥，不入库）
+data/
+.env
+.wren-config.json
+*.log
+
+# 业务（用户的真实业务不入库，用示例脚本生成）
+businesses/*
+!businesses/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db

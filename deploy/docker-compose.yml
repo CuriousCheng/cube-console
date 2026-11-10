@@ -1,0 +1,40 @@
+services:
+  trino:
+    image: trinodb/trino:484
+    container_name: wc-trino
+    ports:
+      - "8888:8080"
+    volumes:
+      - ./trino/catalog:/etc/trino/catalog
+    environment:
+      # 允许运行期增删 catalog（后端写文件后调 REST 即生效）
+      CATALOG_MANAGEMENT: dynamic
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    container_name: wc-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./trino/catalog:/trino-catalog
+    environment:
+      - DATA_DIR=/app/data
+      - CATALOG_DIR=/trino-catalog
+      - TRINO_URL=http://trino:8080
+      - MASTER_KEY=${MASTER_KEY:?请在 .env 里设置 MASTER_KEY}
+      - ADMIN_USER=${ADMIN_USER:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?请在 .env 里设置 ADMIN_PASSWORD}
+    depends_on:
+      - trino
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: wc-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
