@@ -62,67 +62,7 @@ async def on_startup() -> None:
     if not store.path_of("config").exists():
         await store.write("config", DEFAULTS)
     # 后台清理长时间没人用的 MCP
-    asyncio.create_task(_reaper())
     # 启动 MCP 网关（对外给外部 AI 用）
-    asyncio.create_task(_start_gateway())
-
-
-_gateway_procs: list = []
-
-
-async def _start_gateway() -> None:
-    """拉起网关：
-      9300 → streamable-http（Claude/Cursor 等新客户端）
-      9301 → sse（老客户端，比如 Cline 默认走 SSE）
-    """
-    port = os.getenv("GATEWAY_PORT", "9300")
-    sse_port = os.getenv("GATEWAY_SSE_PORT", "9301")
-    # 默认不启动；需要时设 ENABLE_GATEWAY=1
-    if os.getenv("ENABLE_GATEWAY", "").lower() not in ("1", "true", "yes"):
-        return
-
-    import sys
-
-    cwd = str(Path(__file__).resolve().parent.parent)
-    base_env = {
-        **os.environ,
-        "WC_API": f"http://127.0.0.1:{os.getenv('PORT', '8000')}",
-        "ADMIN_USER": os.getenv("ADMIN_USER", "admin"),
-        "ADMIN_PASSWORD": os.getenv("ADMIN_PASSWORD", ""),
-    }
-
-    for env_extra in (
-        {"GATEWAY_PORT": port, "GATEWAY_TRANSPORT": "streamable-http"},
-        {"GATEWAY_PORT": sse_port, "GATEWAY_TRANSPORT": "sse"},
-    ):
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                sys.executable,
-                "-m",
-                "app.gateway",
-                cwd=cwd,
-                env={**base_env, **env_extra},
-                stdout=asyncio.subprocess.DEVNULL,
-                stderr=asyncio.subprocess.DEVNULL,
-            )
-            _gateway_procs.append(proc)
-        except Exception:  # noqa: BLE001
-            pass
-
-
-async def _reaper() -> None:
-    from .core.mcp_pool import pool
-
-    while True:
-        await asyncio.sleep(60)
-        try:
-            cfg = store.read("config", DEFAULTS)
-            idle = int(cfg.get("idle_stop_minutes", 10))
-            await pool.reap(idle)
-        except Exception:  # noqa: BLE001
-            pass
-
-
 # ── 健康 ────────────────────────────────────────────────
 
 
@@ -439,16 +379,8 @@ async def test_saved(ds_id: str, user: dict = Depends(require("editor"))) -> dic
 users_api.register(app, current_user, require)
 # ── 项目 + MCP 池 ─────────────────────────────────────
 
-from .api import projects as projects_api  # noqa: E402
-from .api import ask as ask_api  # noqa: E402
-from .api import models as models_api  # noqa: E402
-from .api import files as files_api  # noqa: E402
 from .api import cube_api as cube_api  # noqa: E402
 
-projects_api.register(app, current_user, require)
-ask_api.register(app, current_user, require)
-models_api.register(app, current_user, require)
-files_api.register(app, current_user, require)
 cube_api.register(app, current_user, require)
 
 
